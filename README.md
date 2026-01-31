@@ -1,0 +1,258 @@
+# claude-code-orchestrator
+
+![Claude Code Orchestrator](./summary.png)
+
+Multi-Agent AI Development Environment
+
+```
+Claude Code (Orchestrator) ─┬─ Codex CLI (Deep Reasoning)
+                            ├─ Gemini CLI (Research)
+                            └─ Subagents (Parallel Tasks)
+```
+
+## Quick Start
+
+기존 프로젝트의 루트로 실행:
+
+```bash
+git clone --depth 1 https://github.com/gaebalai/claude-code-orchestrator.git .starter && cp -r .starter/.claude .starter/.codex .starter/.gemini .starter/CLAUDE.md . && rm -rf .starter && claude
+```
+
+## Prerequisites
+
+### Claude Code
+
+```bash
+npm install -g @anthropic-ai/claude-code
+claude login
+```
+
+### Codex CLI
+
+```bash
+npm install -g @openai/codex
+codex login
+```
+
+### Gemini CLI
+
+```bash
+npm install -g @google/gemini-cli
+gemini login
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│           Claude Code (Orchestrator)                        │
+│           → 컨텍스트 절약이 최우선                         │
+│           → 사용자 대화/조정/실행 담당                   │
+│                      ↓                                      │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │              Subagent (general-purpose)               │  │
+│  │              → 독립된 컨텍스트 보유              │  │
+│  │              → Codex/Gemini 호출 가능             │  │
+│  │              → 결과 요약 후 메인으로 반환              │  │
+│  │                                                       │  │
+│  │   ┌──────────────┐        ┌──────────────┐           │  │
+│  │   │  Codex CLI   │        │  Gemini CLI  │           │  │
+│  │   │  설계/추론     │        │  리서치    │           │  │
+│  │   │  디버깅       │        │  멀티모달  │          │  │
+│  │   └──────────────┘        └──────────────┘           │  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 컨텍스트 관리 (핵심)
+
+메인 오케스트레이터(Claude)의 컨텍스트를 아끼기 위해 **출력이 큰 작업은 반드시 서브에이전트를 경유**한다.
+
+| 상황 | 권장 방식 |
+|------|----------|
+| 출력이 클 것으로 예상 | 서브에이전트 경유 |
+| 짧은 질문·짧은 답변 | 직접 호출 가능 |
+| Codex / Gemini 상담 | 서브에이전트 경유 |
+| 상세 분석 필요 | 서브에이전트 → 파일 저장 |
+
+## 디렉터리 구조(Directory Structure)
+
+```
+.
+├── CLAUDE.md # 메인 시스템 문서
+├── README.md
+├── pyproject.toml # Python 프로젝트 설정
+├── uv.lock # 의존성 잠금 파일
+│
+├── .claude/
+│   ├── agents/
+│   │   └── general-purpose.md   # 서브에이전트 설정
+│   │
+│   ├── skills/                  # 재사용 가능한 워크플로우
+│   │   ├── startproject/        # 프로젝트 시작
+│   │   ├── plan/                # 구현 계획
+│   │   ├── tdd/                 # 테스트 주도 개발
+│   │   ├── checkpointing/       # 세션 영속화
+│   │   ├── codex-system/        # Codex CLI 연동
+│   │   ├── gemini-system/       # Gemini CLI 연동
+│   │   └── ...
+│   │
+│   ├── hooks/                   # 자동화 훅
+│   │   ├── agent-router.py      # 에이전트 라우팅
+│   │   ├── lint-on-save.py      # 저장 시 자동 린트
+│   │   └── ...
+│   │
+│   ├── rules/                   # 개발 규칙
+│   │   ├── coding-principles.md
+│   │   ├── testing.md
+│   │   └── ...
+│   │
+│   ├── docs/
+│   │   ├── DESIGN.md            # 설계 결정 기록
+│   │   ├── research/            # Gemini 조사 결과
+│   │   └── libraries/           # 라이브러리 제약
+│   │
+│   └── logs/
+│       └── cli-tools.jsonl      # Codex/Gemini 입출력 로그
+│
+├── .codex/                      # Codex CLI 설정
+│   ├── AGENTS.md
+│   └── config.toml
+│
+└── .gemini/                     # Gemini CLI 설정
+    ├── GEMINI.md
+    └── settings.json
+```
+
+## Skills
+
+### `/startproject` — 프로젝트 시작
+
+멀티에이전트 협업으로 프로젝트를 킥오프한다.
+
+```
+/startproject 사용자 인증 기능
+```
+
+**워크플로우:**
+1. **Gemini** → 리포지토리 분석·사전 조사
+2. **Claude** → 요구사항 정리·계획 수립
+3. **Codex** → 계획 리뷰·리스크 분석
+4. **Claude** → 실행 태스크 목록 생성
+
+### `/plan` — 구현 계획 수립
+
+요구사항을 실제 구현 단계로 분해한다.
+
+```
+/plan API 엔드포인트 추가
+```
+
+**출력:**
+- 구현 단계(파일, 변경 내용, 검증 방법)
+- 의존성 및 위험
+- 검증 기준
+
+### `/tdd` — 테스트 주도 개발
+
+Red → Green → Refactor 사이클을 강제한다.
+
+```
+/tdd 사용자 등록 기능
+```
+
+**워크플로우:**
+1. 테스트 케이스 설계
+2. 실패한 테스트 작성(Red)
+3. 최소한의 구현(Green)
+4. 리팩토링(Refactor)
+
+### `/checkpointing` — 세션 저장
+
+대화·결정·코드 흐름을 재사용 가능하게 보존한다.
+
+```bash
+/checkpointing              # 기본: 기록 로그
+/checkpointing --full       # 전체 : git 이력 및 파일 변경 포함
+/checkpointing --analyze    # 분석 : 재사용 가능한 기술 패턴 발견
+```
+
+### `/codex-system` — Codex CLI連携
+
+설계 판단, 디버깅, 트레이드오프 분석 전용.
+
+**트리거 예시:**
+- "어떻게 설계해야 하는가?" "어떻게 구현할까?"
+- "왜 움직이지 않아?" "오류가 나온다"
+- "어느 쪽이 좋다?" "비교해"
+
+### `/gemini-system` — Gemini CLI連携
+
+리서치, 대규모 분석, 멀티모달 처리 전용.
+
+**트리거 예:**
+- "검사해" "리서치해"
+- "이 PDF/동영상 보기"
+- "코드베이스 전체 이해"
+
+### `/simplify` — 코드 리팩토링
+
+코드를 간결화·가독성 향상시킵니다.
+
+### `/design-tracker` — 설계 결정 추적
+
+아키텍처 및 구현 결정을 자동으로 기록합니다.
+
+## 개발 (Development)
+
+### 기술 스택(Tech Stack)
+
+| 도구 | 용도 |
+|--------|------|
+| **uv** | 패키지 관리 (pip 미사용) |
+| **ruff** | 린트·포맷 |
+| **mypy** | 타입 검사 |
+| **pytest** | 테스트 |
+| **poethepoet** | 태스크 러너 |
+
+### Commands
+
+```bash
+# 의존성
+uv add <package>           # 패키지 추가
+uv add --dev <package>     # 개발 종속성 추가
+uv sync                    # 종속성 동기화
+
+# 품질 점검
+poe lint                   # ruff check + format
+poe typecheck              # mypy
+poe test                   # pytest
+poe all                    # 전체 검사 실행
+
+# 직접 실행
+uv run pytest -v
+uv run ruff check .
+```
+
+## Hooks
+
+자동화 훅은 적절한 시점에서 에이전트 연동을 제안합니다.
+
+| 후크 | 트리거 | 동작 |
+|--------|----------|------|
+| `agent-router.py` | 사용자 입력 | Codex / Gemini로 라우팅 제안 |
+| `lint-on-save.py` | 파일 저장 | 자동 lint 실행 |
+| `check-codex-before-write.py` | 파일 쓰기 전 | Codex 상담 제안 |
+| `log-cli-tools.py` | Codex / Gemini 실행 | I / O 로깅 |
+
+## Language Rules
+
+- **코드 및 추론**: 영어
+- **사용자 응답**: 한국어
+- **기술문서**: 영어
+- **README**: 한국어 허용
+
+## License
+[MIT](LICENSE)
+
+MDRULES Dev. by JAEWOO, KIM.
