@@ -90,7 +90,7 @@ Task tool parameters:
     {Task description}
 
     Call Codex CLI:
-    codex exec --model gpt-5.2-codex --sandbox read-only --full-auto "
+    codex exec --model gpt-5.5 --sandbox read-only --full-auto "
     {Question for Codex}
     " 2>/dev/null
 
@@ -108,7 +108,7 @@ Only use direct Bash call when:
 
 ```bash
 # Only for simple queries
-codex exec --model gpt-5.2-codex --sandbox read-only --full-auto "Brief question" 2>/dev/null
+codex exec --model gpt-5.5 --sandbox read-only --full-auto "Brief question" 2>/dev/null
 ```
 
 ### Sandbox Modes
