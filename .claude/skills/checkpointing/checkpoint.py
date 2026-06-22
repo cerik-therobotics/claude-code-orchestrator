@@ -8,12 +8,12 @@ Usage:
     python checkpoint.py --full --analyze               # Full checkpoint + skill analysis
 
 Session History Mode (default):
-    Updates CLAUDE.md, .codex/AGENTS.md, .gemini/GEMINI.md with CLI consultation history.
+    Updates CLAUDE.md, .codex/AGENTS.md, and .agents/AGENTS.md with CLI consultation history.
 
 Full Checkpoint Mode (--full):
     Creates comprehensive checkpoint file in .claude/checkpoints/ including:
     - Git commits and file changes
-    - CLI tool consultations (Codex/Gemini)
+    - CLI tool consultations (Codex/Antigravity)
     - Design decisions changes
     - Session summary
 
@@ -38,7 +38,7 @@ DESIGN_FILE = PROJECT_ROOT / ".claude" / "docs" / "DESIGN.md"
 CONTEXT_FILES = {
     "claude": PROJECT_ROOT / "CLAUDE.md",
     "codex": PROJECT_ROOT / ".codex" / "AGENTS.md",
-    "gemini": PROJECT_ROOT / ".gemini" / "GEMINI.md",
+    "antigravity": PROJECT_ROOT / ".agents" / "AGENTS.md",
 }
 
 SESSION_HISTORY_HEADER = "## Session History"
@@ -196,8 +196,11 @@ def summarize_entries(entries: list[dict]) -> dict[str, list[dict]]:
         date = ts[:10] if ts else "unknown"
         tool = entry.get("tool", "unknown")
 
+        if tool == "gemini":
+            tool = "antigravity"
+
         if date not in by_date:
-            by_date[date] = {"codex": [], "gemini": []}
+            by_date[date] = {"codex": [], "antigravity": []}
 
         if tool in by_date[date]:
             by_date[date][tool].append({
@@ -230,9 +233,9 @@ def generate_session_history(by_date: dict) -> str:
                 lines.append(f"- {status} {prompt_summary}...")
             lines.append("")
 
-        if data.get("gemini"):
-            lines.append("**Gemini조사:**")
-            for item in data["gemini"][:5]:  # Limit to 5 per day
+        if data.get("antigravity"):
+            lines.append("**Antigravity조사:**")
+            for item in data["antigravity"][:5]:  # Limit to 5 per day
                 prompt_summary = item["prompt"][:100].replace("\n", " ")
                 status = "✓" if item["success"] else "✗"
                 lines.append(f"- {status} {prompt_summary}...")
@@ -277,7 +280,9 @@ def generate_full_checkpoint(since: str | None = None) -> Path | None:
 
     # Count CLI consultations
     codex_count = sum(1 for e in entries if e.get("tool") == "codex")
-    gemini_count = sum(1 for e in entries if e.get("tool") == "gemini")
+    antigravity_count = sum(
+        1 for e in entries if e.get("tool") in ("antigravity", "gemini")
+    )
 
     # Build checkpoint content
     lines: list[str] = []
@@ -302,7 +307,7 @@ def generate_full_checkpoint(since: str | None = None) -> Path | None:
         f"{len(file_changes['deleted'])} deleted)"
     )
     lines.append(f"- **Codex consultations**: {codex_count}")
-    lines.append(f"- **Gemini researches**: {gemini_count}")
+    lines.append(f"- **Antigravity researches**: {antigravity_count}")
     if since:
         lines.append(f"- **Since**: {since}")
     lines.append("")
@@ -359,7 +364,9 @@ def generate_full_checkpoint(since: str | None = None) -> Path | None:
     lines.append("")
 
     codex_entries = [e for e in entries if e.get("tool") == "codex"]
-    gemini_entries = [e for e in entries if e.get("tool") == "gemini"]
+    antigravity_entries = [
+        e for e in entries if e.get("tool") in ("antigravity", "gemini")
+    ]
 
     if codex_entries:
         lines.append(f"### Codex ({len(codex_entries)} consultations)")
@@ -372,15 +379,15 @@ def generate_full_checkpoint(since: str | None = None) -> Path | None:
             lines.append(f"- ... and {len(codex_entries) - 10} more consultations")
         lines.append("")
 
-    if gemini_entries:
-        lines.append(f"### Gemini ({len(gemini_entries)} researches)")
+    if antigravity_entries:
+        lines.append(f"### Antigravity ({len(antigravity_entries)} researches)")
         lines.append("")
-        for entry in gemini_entries[:10]:
+        for entry in antigravity_entries[:10]:
             status = "✓" if entry.get("success", False) else "✗"
             prompt = entry.get("prompt", "")[:80].replace("\n", " ")
             lines.append(f"- {status} {prompt}...")
-        if len(gemini_entries) > 10:
-            lines.append(f"- ... and {len(gemini_entries) - 10} more researches")
+        if len(antigravity_entries) > 10:
+            lines.append(f"- ... and {len(antigravity_entries) - 10} more researches")
         lines.append("")
 
     if not entries:
@@ -502,7 +509,7 @@ Examples:
             print(f"\nCheckpoint created: {checkpoint_file}")
             print("\nCheckpoint includes:")
             print("  - Git commits and file changes")
-            print("  - CLI tool consultations (Codex/Gemini)")
+            print("  - CLI tool consultations (Codex/Antigravity)")
             print("  - Session summary")
 
             if args.analyze:
@@ -551,7 +558,7 @@ Examples:
             print(f"Skipped: {file_path}")
 
     print("\nSession history has been written to all context files.")
-    print("All agents (Claude, Codex, Gemini) can now see the session history.")
+    print("All agents (Claude, Codex, Antigravity) can now see the session history.")
 
 
 if __name__ == "__main__":

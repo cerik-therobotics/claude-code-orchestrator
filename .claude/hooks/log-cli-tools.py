@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-PostToolUse hook: Log Codex/Gemini CLI input/output to JSONL file.
+PostToolUse hook: Log Codex/Antigravity CLI input/output to JSONL file.
 
-Triggers after Bash tool calls containing 'codex' or 'gemini' commands.
+Triggers after Bash tool calls containing 'codex' or 'agy' commands.
 Logs are stored in .claude/logs/cli-tools.jsonl
 
-All agents (Claude Code, subagents, Codex, Gemini) can read this log.
+All agents (Claude Code, subagents, Codex, Antigravity) can read this log.
 """
 
 import json
-import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -35,12 +34,12 @@ def extract_codex_prompt(command: str) -> str | None:
     return None
 
 
-def extract_gemini_prompt(command: str) -> str | None:
-    """Extract prompt from gemini command."""
-    # Pattern: gemini -p "prompt" or gemini -p 'prompt'
+def extract_antigravity_prompt(command: str) -> str | None:
+    """Extract prompt from agy command."""
+    # Pattern: agy -p "prompt", agy --print "prompt", or agy --prompt "prompt"
     patterns = [
-        r'gemini\s+-p\s+"([^"]+)"',
-        r"gemini\s+-p\s+'([^']+)'",
+        r'agy\s+(?:-p|--print|--prompt)\s+"([^"]+)"',
+        r"agy\s+(?:-p|--print|--prompt)\s+'([^']+)'",
     ]
     for pattern in patterns:
         match = re.search(pattern, command, re.DOTALL)
@@ -88,22 +87,23 @@ def main() -> None:
     command = tool_input.get("command", "")
     output = tool_response.get("stdout", "") or tool_response.get("content", "")
 
-    # Check if this is a codex or gemini command
-    is_codex = "codex" in command.lower()
-    is_gemini = "gemini" in command.lower() and "codex" not in command.lower()
+    # Check if this is a codex or Antigravity command
+    command_lower = command.lower()
+    is_codex = "codex" in command_lower
+    is_antigravity = re.search(r"(^|\s)agy(\s|$)", command_lower) is not None and not is_codex
 
-    if not (is_codex or is_gemini):
+    if not (is_codex or is_antigravity):
         return
 
     # Extract prompt based on tool type
     if is_codex:
         tool = "codex"
         prompt = extract_codex_prompt(command)
-        model = extract_model(command) or "gpt-5.2-codex"
+        model = extract_model(command) or "gpt-5.3-codex"
     else:
-        tool = "gemini"
-        prompt = extract_gemini_prompt(command)
-        model = "gemini-3-pro-preview"
+        tool = "antigravity"
+        prompt = extract_antigravity_prompt(command)
+        model = extract_model(command) or "Gemini 3.1 Pro (High)"
 
     if not prompt:
         # Could not extract prompt, skip logging
